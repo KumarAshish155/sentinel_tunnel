@@ -9,6 +9,8 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@v2
       - name: Get the version
         id: get_tag
         run: echo ::set-output name=TAG_NAME::${GITHUB_REF#refs/tags/}
