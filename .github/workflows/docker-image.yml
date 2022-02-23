@@ -24,6 +24,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ steps.get_tag.outputs.TAG_NAME }}
         run: |
+          ls -la
           docker build -t ashish155/sentinel-tunnel:$IMAGE_TAG .
           docker push ashish155/sentinel-tunnel:$IMAGE_TAG
           
