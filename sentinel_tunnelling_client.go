@@ -1,48 +1,29 @@
 package main
 
 import (
-	// "bufio"
-	"encoding/json"
 	"fmt"
+	"github.com/KumarAshish155/sentinel_tunnel/config"
 	"github.com/KumarAshish155/sentinel_tunnel/st_sentinel_connection"
 	"go.uber.org/zap"
 	"io"
-	"io/ioutil"
 	"net"
 	"time"
 )
 
-type SentinelTunnellingDbConfig struct {
-	Name       string
-	Local_port string
-}
-
-type SentinelTunnellingConfiguration struct {
-	Sentinels_addresses_list []string
-	Databases                []SentinelTunnellingDbConfig
-}
 
 type SentinelTunnellingClient struct {
-	configuration       SentinelTunnellingConfiguration
+	configuration       config.Configuration
 	sentinel_connection *st_sentinel_connection.Sentinel_connection
 }
 
 type get_db_address_by_name_function func(db_name string) (string, error)
 
-func NewSentinelTunnellingClient(config_file_location string, l *zap.Logger) *SentinelTunnellingClient {
-	data, err := ioutil.ReadFile(config_file_location)
-	if err != nil {
-		l.Fatal("an error has occur during configuration read",zap.Error(err))
-	}
-
+func NewSentinelTunnellingClient(cfg config.Configuration, l *zap.Logger) *SentinelTunnellingClient {
 	Tunnelling_client := SentinelTunnellingClient{}
-	err = json.Unmarshal(data, &(Tunnelling_client.configuration))
-	if err != nil {
-		l.Fatal("an error has occur during configuration read,",zap.Error(err))
-	}
+	Tunnelling_client.configuration= cfg
 
-	Tunnelling_client.sentinel_connection, err =
-		st_sentinel_connection.NewSentinelConnection(Tunnelling_client.configuration.Sentinels_addresses_list)
+	conn,err:=st_sentinel_connection.NewSentinelConnection(Tunnelling_client.configuration.SentinelAddress)
+	Tunnelling_client.sentinel_connection=conn
 	if err != nil {
 		l.Fatal("an error has occur, ",zap.Error(err))
 	}
@@ -94,8 +75,8 @@ func handleSigleDbConnections(listening_port string, db_name string, get_db_addr
 }
 
 func (st_client *SentinelTunnellingClient) Start( l *zap.Logger) {
-	for _, db_conf := range st_client.configuration.Databases {
-		go handleSigleDbConnections(db_conf.Local_port, db_conf.Name,
+	for _, db_conf := range st_client.configuration.DB {
+		go handleSigleDbConnections(db_conf.Port, db_conf.Name,
 			st_client.sentinel_connection.GetAddressByDbName,l)
 	}
 }
@@ -107,7 +88,9 @@ func main() {
 			l.Fatal("couldn't flush zap logger", zap.Error(err))
 		}
 	}()
-	st_client := NewSentinelTunnellingClient("/home/kumar/go/src/github.com/KumarAshish155/sentinel_tunnel/sentinel_tunnel_configuration_example.json",l)
+	cfg := config.Init();
+	fmt.Println(cfg)
+	st_client := NewSentinelTunnellingClient(cfg,l)
 	st_client.Start(l)
 	for {
 		time.Sleep(1000 * time.Millisecond)
