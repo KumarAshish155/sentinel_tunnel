@@ -1,0 +1,32 @@
+name: Docker
+
+on:
+  push:
+    tags: [ 'v*.*.*' ]
+
+jobs:
+  CI:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the version
+        id: get_tag
+        run: echo ::set-output name=TAG_NAME::${GITHUB_REF#refs/tags/}
+        
+      - name: docker login
+        env:
+          DOCKER_USER: ${{secrets.DOCKER_USER}}
+          DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+        run: |
+          docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+          
+      - name: Build Tag & Push Inmage To Dockerhub
+        env:
+          IMAGE_TAG: ${{ steps.get_tag.outputs.TAG_NAME }}
+        run: |
+          docker build -t ashish155/sentinel-tunnel:$IMAGE_TAG .
+          docker push ashish155/sentinel-tunnel:$IMAGE_TAG
+          
+      - name: Docker Logout
+        run: |
+          docker logout
